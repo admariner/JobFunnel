@@ -91,13 +91,9 @@ class Job():
 
         # These may not always be populated in our job source
         self.post_date = post_date
-        self.scrape_date = scrape_date if scrape_date else datetime.today()
-        self.tags = tags if tags else []
-        if short_description:
-            self.short_description = short_description
-        else:
-            self.short_description = ''
-
+        self.scrape_date = scrape_date or datetime.now()
+        self.tags = tags or []
+        self.short_description = short_description or ''
         # Semi-private attrib for debugging
         self._raw_scrape_data = raw
 
@@ -165,27 +161,29 @@ class Job():
         TODO: this is legacy, no support for short_description yet.
         NOTE: RAW cannot be put into CSV.
         """
-        return dict([
-            (h, v) for h,v in zip(
-                CSV_HEADER,
-                [
-                    self.status.name,
-                    self.title,
-                    self.company,
-                    self.location,
-                    self.post_date.strftime('%Y-%m-%d'),
-                    self.description,
-                    ', '.join(self.tags),
-                    self.url,
-                    self.key_id,
-                    self.provider,
-                    self.query,
-                    self.locale.name,
-                    self.wage,
-                    self.remoteness.name,
-                ]
+        return dict(
+            list(
+                zip(
+                    CSV_HEADER,
+                    [
+                        self.status.name,
+                        self.title,
+                        self.company,
+                        self.location,
+                        self.post_date.strftime('%Y-%m-%d'),
+                        self.description,
+                        ', '.join(self.tags),
+                        self.url,
+                        self.key_id,
+                        self.provider,
+                        self.query,
+                        self.locale.name,
+                        self.wage,
+                        self.remoteness.name,
+                    ],
+                )
             )
-        ])
+        )
 
     @property
     def as_json_entry(self) -> Dict[str, str]:
@@ -197,11 +195,9 @@ class Job():
             'title': self.title,
             'company': self.company,
             'post_date': self.post_date.strftime('%Y-%m-%d'),
-            'description': (
-                self.description[:MAX_BLOCK_LIST_DESC_CHARS] + '..'
-            ) if len(self.description) > MAX_BLOCK_LIST_DESC_CHARS else (
-                self.description
-            ),
+            'description': f'{self.description[:MAX_BLOCK_LIST_DESC_CHARS]}..'
+            if len(self.description) > MAX_BLOCK_LIST_DESC_CHARS
+            else self.description,
             'status': self.status.name,
         }
 

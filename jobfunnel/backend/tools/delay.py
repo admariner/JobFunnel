@@ -17,14 +17,14 @@ def _c_delay(list_len: int, delay: Union[int, float]):
     delays = [delay] * list_len
     # sets incrementing offsets to the first 8 elements
     inc = .2  # Increment set to .2
-    offset = len(delays[0:8]) / 5  # offset
+    offset = len(delays[:8]) / 5
     # checks if delay is < 1.5
     if delay < 1.5:
         # changes increment and offset, to prevent 0s and negative nums
         inc = delay / 8
-        offset = float(len(delays[0:8])) * inc
+        offset = float(len(delays[:8])) * inc
     # division here is faster since they are both ints
-    delays[0:8] = [(x - offset) + i * inc for i, x in enumerate(delays[0:8])]
+    delays[:8] = [(x - offset) + i * inc for i, x in enumerate(delays[:8])]
     return delays
 
 
@@ -33,18 +33,16 @@ def _lin_delay(list_len: int, delay: Union[int, float]):
     """
     # calculates x value where lines intersect
     its = 5 * delay  # its = intersection
-    # any delay of .2 or less is hard delay
     if its <= 1:
         return _c_delay(list_len, delay)
-    else:
-        # prevents slicing from breaking if delay is a float
-        if isinstance(its, float):
-            its = int(ceil(its))
-        # create list of x values based on scrape list size
-        delays = [*range(list_len)]
-        delays[0:its] = [x / 5 for x in delays[0:its]]
-        delays[its:] = [delay] * (len(delays) - its)
-        return delays
+    # prevents slicing from breaking if delay is a float
+    if isinstance(its, float):
+        its = int(ceil(its))
+    # create list of x values based on scrape list size
+    delays = [*range(list_len)]
+    delays[:its] = [x / 5 for x in delays[:its]]
+    delays[its:] = [delay] * (len(delays) - its)
+    return delays
 
 
 def _sig_delay(list_len: int, delay: Union[int, float]):

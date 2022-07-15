@@ -1,6 +1,7 @@
 """The base scraper class to be used for all web-scraping emitting Job objects
 Paul McInnis 2020
 """
+
 import random
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -20,10 +21,6 @@ from jobfunnel.backend.tools.delay import calculate_delays
 from jobfunnel.backend.tools.filters import JobFilter
 from jobfunnel.resources import (MAX_CPU_WORKERS, USER_AGENT_LIST, JobField,
                                  Locale, Remoteness)
-
-# pylint: disable=using-constant-test,unused-import
-if False:  # or typing.TYPE_CHECKING  if python3.5.3+
-    from jobfunnel.config import JobFunnelConfigManager
 # pylint: enable=using-constant-test,unused-import
 
 
@@ -218,21 +215,19 @@ class BaseScraper(ABC, Logger):
             # calls in self.delayed_get_set_fields will be delayed.
             # and it busy-waits.
             delays = calculate_delays(n_soups, self.config.delay_config)
-            futures = []
-            for job_soup, delay in zip(job_soups, delays):
-                futures.append(
-                    threads.submit(
-                        self.scrape_job,
-                        job_soup=job_soup,
-                        delay=delay,
-                        delay_lock=delay_lock,
-                    )
+            futures = [
+                threads.submit(
+                    self.scrape_job,
+                    job_soup=job_soup,
+                    delay=delay,
+                    delay_lock=delay_lock,
                 )
+                for job_soup, delay in zip(job_soups, delays)
+            ]
 
             # For each job-soup object, scrape the soup into a Job (w/o desc.)
             for future in tqdm(as_completed(futures), total=n_soups, ascii=True):
-                job = future.result()
-                if job:
+                if job := future.result():
                     # Handle inter-scraped data duplicates by key.
                     # TODO: move this functionality into duplicates filter
                     if job.key_id in jobs_dict:
@@ -352,7 +347,7 @@ class BaseScraper(ABC, Logger):
                 return None
 
         # Prefix the id with the scraper name to avoid key conflicts
-        new_key_id = job.provider + '_' + job.key_id
+        new_key_id = f'{job.provider}_{job.key_id}'
         job.key_id = new_key_id
 
         return job
@@ -397,31 +392,37 @@ class BaseScraper(ABC, Logger):
         all_set_get_fields = set(self.job_get_fields + self.job_set_fields)
         set_min_fields = set(self.min_required_job_fields)
 
-        set_missing_req_fields = set_min_fields - all_set_get_fields
-        if set_missing_req_fields:
+        if set_missing_req_fields := set_min_fields - all_set_get_fields:
             raise ValueError(
                 f"Scraper: {self.__class__.__name__} Job attributes: "
                 f"{set_missing_req_fields} are required and not implemented."
             )
 
-        field_intersection = set_job_get_fields.intersection(set_job_set_fields)
-        if field_intersection:
+        if field_intersection := set_job_get_fields.intersection(
+            set_job_set_fields
+        ):
             raise ValueError(
                 f"Scraper: {self.__class__.__name__} Job attributes: "
                 f"{field_intersection} are implemented by both get() and set()!"
             )
-        excluded_fields = []  # type: List[JobField]
-        for field in JobField:
-            # NOTE: we exclude status, locale, query, provider and scrape date
-            # because these are set without needing any scrape data.
-            # TODO: SHORT and RAW are not impl. rn. remove this check when impl.
-            if (field not in [JobField.STATUS, JobField.LOCALE, JobField.QUERY,
-                              JobField.SCRAPE_DATE, JobField.PROVIDER,
-                              JobField.SHORT_DESCRIPTION, JobField.RAW]
-                    and field not in self.job_get_fields
-                    and field not in self.job_set_fields):
-                excluded_fields.append(field)
-        if excluded_fields:
+        if excluded_fields := [
+            field
+            for field in JobField
+            if (
+                field
+                not in [
+                    JobField.STATUS,
+                    JobField.LOCALE,
+                    JobField.QUERY,
+                    JobField.SCRAPE_DATE,
+                    JobField.PROVIDER,
+                    JobField.SHORT_DESCRIPTION,
+                    JobField.RAW,
+                ]
+                and field not in self.job_get_fields
+                and field not in self.job_set_fields
+            )
+        ]:
             # NOTE: INFO level because this is OK, but ideally ppl see this
             # so they are motivated to help and understand why stuff might
             # be missing in the CSV

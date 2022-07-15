@@ -198,14 +198,11 @@ class JobFunnel(Logger):
                 self.config.master_csv_file
             )
 
+        elif self.config.no_scrape:
+            # User is running --no-scrape probably just to update lists
+            self.logger.debug("No new jobs were added.")
         else:
-            # We got no new, unique jobs. This is normal if loading scrape
-            # with --no-scrape as all jobs are removed by duplicate filter
-            if self.config.no_scrape:
-                # User is running --no-scrape probably just to update lists
-                self.logger.debug("No new jobs were added.")
-            else:
-                self.logger.warning("No new jobs were added to CSV.")
+            self.logger.warning("No new jobs were added to CSV.")
 
     def _check_for_inter_scraper_validity(self, existing_jobs: Dict[str, Job],
                                            incoming_jobs: Dict[str, Job],
@@ -214,7 +211,7 @@ class JobFunnel(Logger):
         NOTE: this is a slow check, would be cool to improve the O(n) on this
         """
         existing_job_keys = existing_jobs.keys()
-        for inc_key_id in incoming_jobs.keys():
+        for inc_key_id in incoming_jobs:
             for exist_key_id in existing_job_keys:
                 if inc_key_id == exist_key_id:
                     raise ValueError(
@@ -246,7 +243,7 @@ class JobFunnel(Logger):
                 incoming_jobs_dict,
             )
 
-            jobs.update(incoming_jobs_dict)
+            jobs |= incoming_jobs_dict
             end = time()
             self.logger.debug(
                 "Scraped %d jobs from %s, took %.3fs",
@@ -271,11 +268,10 @@ class JobFunnel(Logger):
         all_jobs_dict = {}  # type: Dict[str, Job]
         for file in os.listdir(self.config.cache_folder):
             if '.pkl' in file:
-                all_jobs_dict.update(
-                    self.load_cache(
-                        os.path.join(self.config.cache_folder, file)
-                    )
+                all_jobs_dict |= self.load_cache(
+                    os.path.join(self.config.cache_folder, file)
                 )
+
         self.write_master_csv(self.job_filter.filter(all_jobs_dict))
 
     def load_cache(self, cache_file: str) -> Dict[str, Job]:
@@ -299,26 +295,25 @@ class JobFunnel(Logger):
             raise FileNotFoundError(
                 f"{cache_file} not found! Have you scraped any jobs today?"
             )
-        else:
-            cache_dict = pickle.load(open(cache_file, 'rb'))
-            jobs_dict = cache_dict['jobs_dict']
-            version = cache_dict['version']
-            if version != __version__:
-                # NOTE: this may be an error in the future
-                self.logger.warning(
-                    "Loaded jobs cache has version mismatch! "
-                    "cache version: %s, current version: %s",
-                    version, __version__
-                )
-            self.logger.info(
-                "Read %d jobs from previously-scraped jobs cache: %s.",
-                len(jobs_dict.keys()), cache_file,
+        cache_dict = pickle.load(open(cache_file, 'rb'))
+        jobs_dict = cache_dict['jobs_dict']
+        version = cache_dict['version']
+        if version != __version__:
+            # NOTE: this may be an error in the future
+            self.logger.warning(
+                "Loaded jobs cache has version mismatch! "
+                "cache version: %s, current version: %s",
+                version, __version__
             )
-            self.logger.debug(
-                "NOTE: you may see many duplicate IDs detected if these jobs "
-                "exist in your master CSV already."
-            )
-            return jobs_dict
+        self.logger.info(
+            "Read %d jobs from previously-scraped jobs cache: %s.",
+            len(jobs_dict.keys()), cache_file,
+        )
+        self.logger.debug(
+            "NOTE: you may see many duplicate IDs detected if these jobs "
+            "exist in your master CSV already."
+        )
+        return jobs_dict
 
     def write_cache(self, jobs_dict: Dict[str, Job],
                     cache_file: str = None) -> None:
@@ -331,7 +326,7 @@ class JobFunnel(Logger):
             jobs_dict (Dict[str, Job]): jobs dict to dump into cache.
             cache_file (str, optional): file path to write to. Defaults to None.
         """
-        cache_file = cache_file if cache_file else self.daily_cache_file
+        cache_file = cache_file or self.daily_cache_file
         for job in jobs_dict.values():
             job._raw_scrape_data = None  # pylint: disable=protected-access
         pickle.dump(
@@ -355,7 +350,7 @@ class JobFunnel(Logger):
         """
         jobs_dict = {}  # type: Dict[str, Job]
         with open(self.config.master_csv_file, 'r', encoding='utf8',
-                  errors='ignore') as csvfile:
+                      errors='ignore') as csvfile:
             for row in csv.DictReader(csvfile):
 
                 # NOTE: we are doing legacy support here with 'blurb' etc.
@@ -373,12 +368,7 @@ class JobFunnel(Logger):
                 else:
                     scrape_date = post_date
 
-                if 'raw' in row:
-                    # NOTE: we should never see this because raw cant be in CSV
-                    raw = row['raw']
-                else:
-                    raw = None
-
+                raw = row['raw'] if 'raw' in row else None
                 # FIXME: this is the wrong way to compare row val to Enum.name!
                 # We need to convert from user statuses
                 status = None
@@ -423,7 +413,7 @@ class JobFunnel(Logger):
                 wage = ''
                 if 'wage' in row:
                     wage = row['wage'].strip()
-                    
+
                 job = Job(
                     title=row['title'],
                     company=row['company'],

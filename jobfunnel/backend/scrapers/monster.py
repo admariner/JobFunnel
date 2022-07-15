@@ -1,5 +1,6 @@
 """Scrapers for www.monster.X
 """
+
 import re
 from abc import abstractmethod
 from math import ceil
@@ -16,9 +17,6 @@ from jobfunnel.backend.tools.filters import JobFilter
 from jobfunnel.backend.tools.tools import calc_post_date_from_relative_str
 from jobfunnel.resources import JobField, Remoteness
 
-# pylint: disable=using-constant-test,unused-import
-if False:  # or typing.TYPE_CHECKING  if python3.5.3+
-    from jobfunnel.config import JobFunnelConfigManager
 # pylint: enable=using-constant-test,unused-import
 
 
@@ -136,12 +134,10 @@ class BaseMonsterScraper(BaseScraper):
                 self.session.get(job.url).text, self.config.bs4_parser
             )
         elif parameter == JobField.WAGE:
-            pot_wage_cell = job._raw_scrape_data.find(
+            if pot_wage_cell := job._raw_scrape_data.find(
                 'div', attrs={'class': 'col-xs-12 cell'}
-            )
-            if pot_wage_cell:
-                pot_wage_value = pot_wage_cell.find('div')
-                if pot_wage_value:
+            ):
+                if pot_wage_value := pot_wage_cell.find('div'):
                     job.wage = pot_wage_value.text.strip()
         elif parameter == JobField.DESCRIPTION:
             assert job._raw_scrape_data
@@ -157,8 +153,7 @@ class BaseMonsterScraper(BaseScraper):
                 table_key = li.find('dt')
                 if (table_key and table_key.text.strip().lower()
                         in MONSTER_SIDEPANEL_TAG_ENTRIES):
-                    table_value = li.find('dd')
-                    if table_value:
+                    if table_value := li.find('dd'):
                         tags.append(table_value.text.strip())
         else:
             raise NotImplementedError(f"Cannot set {parameter.name}")
@@ -261,17 +256,8 @@ class BaseMonsterScraper(BaseScraper):
               all previous jobs as we go.
         """
         if method == 'get':
-            return (
-                'https://www.monster.{}/jobs/search/?{}q={}&where={}__2C-{}'
-                    '&rad={}'.format(
-                        self.config.search_config.domain,
-                        f'page={page}&' if page > 1 else '',
-                        self.query,
-                        self.config.search_config.city.replace(' ', '-'),
-                        self.config.search_config.province_or_state,
-                        self._convert_radius(self.config.search_config.radius)
-                )
-            )
+            return f"https://www.monster.{self.config.search_config.domain}/jobs/search/?{f'page={page}&' if page > 1 else ''}q={self.query}&where={self.config.search_config.city.replace(' ', '-')}__2C-{self.config.search_config.province_or_state}&rad={self._convert_radius(self.config.search_config.radius)}"
+
         elif method == 'post':
             raise NotImplementedError()
         else:
@@ -292,18 +278,17 @@ class MonsterMetricRadius:
         """ convert radius in miles TODO replace with numpy
         """
         if radius < 5:
-            radius = 0
+            return 0
         elif 5 <= radius < 10:
-            radius = 5
+            return 5
         elif 10 <= radius < 20:
-            radius = 10
+            return 10
         elif 20 <= radius < 50:
-            radius = 20
+            return 20
         elif 50 <= radius < 100:
-            radius = 50
-        elif radius >= 100:
-            radius = 100
-        return radius
+            return 50
+        else:
+            return 100
 
 
 class MonsterScraperCANEng(MonsterMetricRadius, BaseMonsterScraper,
@@ -320,30 +305,29 @@ class MonsterScraperUSAEng(BaseMonsterScraper, BaseUSAEngScraper):
         """convert radius in miles TODO replace with numpy
         """
         if radius < 5:
-            radius = 0
+            return 0
         elif 5 <= radius < 10:
-            radius = 5
+            return 5
         elif 10 <= radius < 20:
-            radius = 10
+            return 10
         elif 20 <= radius < 30:
-            radius = 20
+            return 20
         elif 30 <= radius < 40:
-            radius = 30
+            return 30
         elif 40 <= radius < 50:
-            radius = 40
+            return 40
         elif 50 <= radius < 60:
-            radius = 50
+            return 50
         elif 60 <= radius < 75:
-            radius = 60
+            return 60
         elif 75 <= radius < 100:
-            radius = 75
+            return 75
         elif 100 <= radius < 150:
-            radius = 100
+            return 100
         elif 150 <= radius < 200:
-            radius = 150
-        elif radius >= 200:
-            radius = 200
-        return radius
+            return 150
+        else:
+            return 200
 
 
 class MonsterScraperUKEng(MonsterMetricRadius, BaseMonsterScraper,
@@ -361,16 +345,8 @@ class MonsterScraperUKEng(MonsterMetricRadius, BaseMonsterScraper,
             all previous jobs as we go.
         """
         if method == 'get':
-            return (
-                'https://www.monster.{}/jobs/search/?{}q={}&where={}'
-                    '&rad={}'.format(
-                        self.config.search_config.domain,
-                        f'page={page}&' if page > 1 else '',
-                        self.query,
-                        self.config.search_config.city.replace(' ', '-'),
-                        self._convert_radius(self.config.search_config.radius)
-                )
-            )
+            return f"https://www.monster.{self.config.search_config.domain}/jobs/search/?{f'page={page}&' if page > 1 else ''}q={self.query}&where={self.config.search_config.city.replace(' ', '-')}&rad={self._convert_radius(self.config.search_config.radius)}"
+
         elif method == 'post':
             raise NotImplementedError()
         else:
@@ -391,17 +367,8 @@ class MonsterScraperFRFre(MonsterMetricRadius, BaseMonsterScraper,
               all previous jobs as we go.
         """
         if method == 'get':
-            return (
-                'https://www.monster.{}/emploi/recherche/?{}q={}&where={}__2C-{}'
-                    '&rad={}'.format(
-                        self.config.search_config.domain,
-                        f'page={page}&' if page > 1 else '',
-                        self.query,
-                        self.config.search_config.city.replace(' ', '-'),
-                        self.config.search_config.province_or_state,
-                        self._convert_radius(self.config.search_config.radius)
-                )
-            )
+            return f"https://www.monster.{self.config.search_config.domain}/emploi/recherche/?{f'page={page}&' if page > 1 else ''}q={self.query}&where={self.config.search_config.city.replace(' ', '-')}__2C-{self.config.search_config.province_or_state}&rad={self._convert_radius(self.config.search_config.radius)}"
+
         elif method == 'post':
             raise NotImplementedError()
         else:
