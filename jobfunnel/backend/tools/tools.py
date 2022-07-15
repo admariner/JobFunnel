@@ -107,7 +107,7 @@ def calc_post_date_from_relative_str(date_str: str) -> date:
                         post_date = datetime.now()
                     elif RECENT_REGEX_B.findall(date_str):
                         # Yesterday
-                        post_date -= timedelta(days=int(1))
+                        post_date -= timedelta(days=1)
                     elif not post_date:
                         # We have failed to correctly evaluate date.
                         raise ValueError(

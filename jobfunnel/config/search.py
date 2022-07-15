@@ -59,12 +59,13 @@ class SearchConfig(BaseConfig):
         self.remoteness = remoteness
 
         # Try to infer the domain string based on the locale.
-        if not domain:
-            if not self.locale in DEFAULT_DOMAIN_FROM_LOCALE:
-                raise ValueError(f"Unknown domain for locale: {self.locale}")
-            self.domain = DEFAULT_DOMAIN_FROM_LOCALE[self.locale]
-        else:
+        if domain:
             self.domain = domain
+
+        elif self.locale not in DEFAULT_DOMAIN_FROM_LOCALE:
+            raise ValueError(f"Unknown domain for locale: {self.locale}")
+        else:
+            self.domain = DEFAULT_DOMAIN_FROM_LOCALE[self.locale]
 
     @property
     def query_string(self) -> str:

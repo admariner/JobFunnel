@@ -1,5 +1,6 @@
 """Config object to run JobFunnel
 """
+
 import logging
 import os
 from typing import List, Optional
@@ -7,10 +8,6 @@ from typing import List, Optional
 from jobfunnel.backend.scrapers.registry import SCRAPER_FROM_LOCALE
 from jobfunnel.config import BaseConfig, DelayConfig, ProxyConfig, SearchConfig
 from jobfunnel.resources import BS4_PARSER
-
-# pylint: disable=using-constant-test,unused-import
-if False:  # or typing.TYPE_CHECKING  if python3.5.3+
-    from jobfunnel.backend.scrapers.base import BaseScraper
 # pylint: enable=using-constant-test,unused-import
 
 
@@ -70,11 +67,7 @@ class JobFunnelConfigManager(BaseConfig):
         self.no_scrape = no_scrape
         self.bs4_parser = bs4_parser  # NOTE: this is not currently configurable
         self.return_similar_results = return_similar_results
-        if not delay_config:
-            # We will always use a delay config to be respectful
-            self.delay_config = DelayConfig()
-        else:
-            self.delay_config = delay_config
+        self.delay_config = delay_config or DelayConfig()
         self.proxy_config = proxy_config
 
     @property

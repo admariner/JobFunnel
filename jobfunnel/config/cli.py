@@ -330,14 +330,14 @@ def build_config_dict(args_dict: Dict[str, Any]) -> Dict[str, Any]:
                 # This is not present in the schema, it is CLI only.
                 continue
             elif value is not None:
-                if any([sub_key in key for sub_key in sub_keys]):
+                if any(sub_key in key for sub_key in sub_keys):
                     # Set sub-config value
                     key_sub_strings = key.split('.')
-                    assert len(key_sub_strings) == 2, "Bad dest name: " + key
+                    assert len(key_sub_strings) == 2, f"Bad dest name: {key}"
                     config[key_sub_strings[0]][key_sub_strings[1]] = value
                 else:
                     # Set base-config value
-                    assert '.' not in key, "Bad base-key: " + key
+                    assert '.' not in key, f"Bad base-key: {key}"
                     config[key] = value
 
     return config
@@ -378,7 +378,7 @@ def get_config_manager(config: Dict[str, Any]) -> JobFunnelConfigManager:
     else:
         proxy_cfg = None
 
-    funnel_cfg_mgr = JobFunnelConfigManager(
+    return JobFunnelConfigManager(
         master_csv_file=config['master_csv_file'],
         user_block_list_file=config['block_list_file'],
         duplicates_list_file=config['duplicates_list_file'],
@@ -390,5 +390,3 @@ def get_config_manager(config: Dict[str, Any]) -> JobFunnelConfigManager:
         delay_config=delay_cfg,
         proxy_config=proxy_cfg,
     )
-
-    return funnel_cfg_mgr

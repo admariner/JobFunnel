@@ -1,6 +1,7 @@
 """Scraper for www.glassdoor.X
 FIXME: this is currently unable to get past page 1 of job results.
 """
+
 import re
 from abc import abstractmethod
 from concurrent.futures import ThreadPoolExecutor, wait
@@ -18,9 +19,6 @@ from jobfunnel.backend.tools.filters import JobFilter
 from jobfunnel.backend.tools.tools import calc_post_date_from_relative_str
 from jobfunnel.resources import MAX_CPU_WORKERS, JobField
 
-# pylint: disable=using-constant-test,unused-import
-if False:  # or typing.TYPE_CHECKING  if python3.5.3+
-    from jobfunnel.config import JobFunnelConfigManager
 # pylint: enable=using-constant-test,unused-import
 
 
@@ -112,15 +110,8 @@ class BaseGlassDoorScraper(BaseScraper):
         if method == 'get':
 
             # Form job search url
-            search = (
-                'https://www.glassdoor.{}/Job/jobs.htm?clickSource=searchBtn'
-                '&sc.keyword={}&locT=C&locId={}&jobType=&radius={}'.format(
-                    self.config.search_config.domain,
-                    self.query,
-                    location_id,
-                    self.quantize_radius(self.config.search_config.radius),
-                )
-            )
+            search = f'https://www.glassdoor.{self.config.search_config.domain}/Job/jobs.htm?clickSource=searchBtn&sc.keyword={self.query}&locT=C&locId={location_id}&jobType=&radius={self.quantize_radius(self.config.search_config.radius)}'
+
             return search
 
         elif method == 'post':
@@ -178,14 +169,14 @@ class BaseGlassDoorScraper(BaseScraper):
             # I click it myself, must be an event listener?
             futures = []
             if n_pages > 1:
-                for page in range(2, n_pages + 1):
-                    futures.append(
-                        threads.submit(
-                            self._search_page_for_job_soups,
-                            self._get_next_page_url(soup_base, page),
-                            job_soup_list,
-                        )
+                futures.extend(
+                    threads.submit(
+                        self._search_page_for_job_soups,
+                        self._get_next_page_url(soup_base, page),
+                        job_soup_list,
                     )
+                    for page in range(2, n_pages + 1)
+                )
 
             wait(futures)  # wait for all scrape jobs to finish
         finally:
@@ -206,16 +197,6 @@ class BaseGlassDoorScraper(BaseScraper):
             ).text.strip()
         elif parameter == JobField.LOCATION:
             return soup.get('data-job-loc')
-        # FIXME: impl.
-        # elif parameter == JobField.TAGS:
-        #     labels = soup.find_all('div', attrs={'class', 'jobLabel'})
-        #     if labels:
-        #         return [
-        #             l.text.strip() for l in labels if l.text.strip() != 'New'
-        #         ]
-        #     else:
-        #         return []
-        # FIXME: impl JobField.REMOTE
         elif parameter == JobField.POST_DATE:
             return calc_post_date_from_relative_str(
                 soup.find(
@@ -228,10 +209,7 @@ class BaseGlassDoorScraper(BaseScraper):
             # NOTE: most jobs don't have this so we wont raise a warning here
             # and will fail silently instead
             wage = soup.find('span', attrs={'class': 'gray salary'})
-            if wage is not None:
-                return wage.text.strip()
-            else:
-                return ''
+            return wage.text.strip() if wage is not None else ''
         elif parameter == JobField.KEY_ID:
             return soup.get('data-id')
         elif parameter == JobField.URL:
@@ -328,7 +306,7 @@ class GlassDoorMetricRadius:
             radius = 50
         elif 100 <= radius < 200:
             radius = 100
-        elif radius >= 200:
+        else:
             radius = 200
         return GLASSDOOR_RADIUS_MAP[radius]
 
@@ -359,7 +337,7 @@ class GlassDoorScraperUSAEng(BaseGlassDoorScraper, BaseUSAEngScraper):
             radius = 25
         elif 50 <= radius < 100:
             radius = 50
-        elif radius >= 100:
+        else:
             radius = 100
         return GLASSDOOR_RADIUS_MAP[radius]
 
