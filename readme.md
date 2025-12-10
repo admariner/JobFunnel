@@ -1,5 +1,4 @@
 <img src="logo/jobfunnel_banner.svg" alt="JobFunnel Banner" width=400/><br/>
-[![Code Coverage](https://codecov.io/gh/PaulMcInnis/JobFunnel/branch/master/graph/badge.svg)](https://codecov.io/gh/PaulMcInnis/JobFunnel)
 
 Automated tool for scraping job postings into a `.csv` file.
 
@@ -11,6 +10,20 @@ Automated tool for scraping job postings into a `.csv` file.
 
 ![masterlist.csv][masterlist]
 
+## Project status: Archived
+
+JobFunnel was built in an era when major job boards exposed mostly static HTML
+with simple pagination. It made it easy to pull your search results from
+multiple sources into a single CSV/Excel file.
+
+Since then, most job boards have moved to much more aggressive anti-automation and bot-detection. Re-implementing
+JobFunnel on top of full browser automation (e.g., Playwright/Selenium) is
+technically possible, but too slow, fragile, and operationally complex to
+deliver the “fast, one-shot CLI” experience this project was designed for.
+
+Rather than pretend this still works, I'm archiving the project as a
+historical/educational artifact. Thanks to everyone who used and starred
+JobFunnel over the years ❤️
 
 # Installation
 
